@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}History{% endblock %}
+{% block content %}
+<section class="grid">
+  <div class="card">
+    <h1>Monitor Runs</h1>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Monitor</th>
+            <th>Started</th>
+            <th>Status</th>
+            <th>Summary</th>
+            <th>Error</th>
+            <th>Screenshot</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for run in runs %}
+          <tr>
+            <td>#{{ run.monitor_id }}</td>
+            <td>{{ run.started_at|datetime_local }}</td>
+            <td>{{ run.status }}</td>
+            <td>{{ run.raw_summary_text or "-" }}</td>
+            <td>{{ run.error_message or "-" }}</td>
+            <td>{% if run.screenshot_path %}<code>{{ run.screenshot_path }}</code>{% else %}-{% endif %}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6">No run history yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Alerts</h2>
+    <ul class="list">
+      {% for alert in alerts %}
+      <li>
+        <strong>{{ alert.category_name }}</strong> {{ alert.old_count or 0 }} -> {{ alert.new_count }}
+        <div class="muted">{{ alert.sent_at|datetime_local }} / success={{ alert.success }}</div>
+      </li>
+      {% else %}
+      <li>No alerts yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endblock %}
+

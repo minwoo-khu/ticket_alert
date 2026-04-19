@@ -1,0 +1,2 @@
+"""Ticket alert MVP package."""
+

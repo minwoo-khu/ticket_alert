@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Notification Settings</h1>
+  <p>Discord webhook is the default MVP notification provider. Phone push depends on Discord mobile notification settings.</p>
+
+  {% if test_result %}
+  <div class="notice">{% if test_result == "ok" %}Test notification sent.{% elif test_result == "saved" %}Settings saved.{% else %}Notification test failed.{% endif %}</div>
+  {% endif %}
+
+  <form method="post" action="/settings" class="form-grid">
+    <label class="full">
+      <span>Discord Webhook URL</span>
+      <input type="url" name="discord_webhook_url" value="{{ config.webhook_url }}">
+    </label>
+
+    <label>
+      <span>Username</span>
+      <input type="text" name="discord_username" value="{{ config.username }}">
+    </label>
+
+    <label>
+      <span>Avatar URL</span>
+      <input type="url" name="discord_avatar_url" value="{{ config.avatar_url }}">
+    </label>
+
+    <label class="checkbox">
+      <input type="checkbox" name="enable_discord" {% if config.enabled.lower() in ['true', '1', 'yes', 'on'] %}checked{% endif %}>
+      <span>Enable Discord notifications</span>
+    </label>
+
+    <div class="form-actions full">
+      <button class="button primary" type="submit">Save Settings</button>
+    </div>
+  </form>
+
+  <form method="post" action="/settings/test">
+    <button class="button" type="submit">Test Notification</button>
+  </form>
+</section>
+{% endblock %}
+

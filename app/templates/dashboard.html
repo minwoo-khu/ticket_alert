@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-header">
+    <div>
+      <h1>Dashboard</h1>
+      <p>Two sample Interpark monitors for 8/8 and 8/9 are seeded automatically on first launch.</p>
+    </div>
+    <a class="button primary" href="/monitors/new">Create Monitor</a>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Event</th>
+          <th>Date</th>
+          <th>Round</th>
+          <th>Watched Categories</th>
+          <th>Last Check</th>
+          <th>Current Counts</th>
+          <th>Status</th>
+          <th>Alerts Sent</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for card in monitor_cards %}
+        <tr>
+          <td>{{ card.monitor.name }}</td>
+          <td>{{ card.monitor.event_title or "-" }}</td>
+          <td>{{ card.monitor.date_label or "-" }}</td>
+          <td>{{ card.monitor.round_label or "-" }}</td>
+          <td>{{ card.watched_categories }}</td>
+          <td>{{ card.monitor.last_check_at|datetime_local }}</td>
+          <td>{{ card.current_counts }}</td>
+          <td>
+            <span class="status {{ card.monitor.last_status or 'idle' }}">
+              {% if card.monitor.enabled %}Enabled{% else %}Paused{% endif %}
+              {% if card.monitor.last_status %} / {{ card.monitor.last_status }}{% endif %}
+            </span>
+            {% if card.monitor.last_error %}
+            <div class="muted">{{ card.monitor.last_error }}</div>
+            {% endif %}
+          </td>
+          <td>{{ card.alerts_sent }}</td>
+          <td>
+            <div class="actions">
+              <form method="post" action="/monitors/{{ card.monitor.id }}/run">
+                <button class="button" type="submit">Run Now</button>
+              </form>
+              <form method="post" action="/monitors/{{ card.monitor.id }}/toggle">
+                <button class="button" type="submit">{% if card.monitor.enabled %}Pause{% else %}Resume{% endif %}</button>
+              </form>
+              <a class="button" href="/monitors/{{ card.monitor.id }}/edit">Edit</a>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="10">No monitors yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="grid">
+  <div class="card">
+    <h2>Recent Alerts</h2>
+    <ul class="list">
+      {% for alert in recent_alerts %}
+      <li>
+        <strong>{{ alert.category_name }}</strong> for monitor #{{ alert.monitor_id }}
+        <span class="muted">{{ alert.sent_at|datetime_local }}</span>
+      </li>
+      {% else %}
+      <li>No alerts yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Recent Runs</h2>
+    <ul class="list">
+      {% for run in recent_runs %}
+      <li>
+        Monitor #{{ run.monitor_id }}: {{ run.status }}
+        <span class="muted">{{ run.started_at|datetime_local }}</span>
+      </li>
+      {% else %}
+      <li>No runs yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endblock %}
+

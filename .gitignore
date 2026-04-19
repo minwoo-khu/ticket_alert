@@ -1,0 +1,7 @@
+.venv/
+.vendor/
+.tmp/
+__pycache__/
+*.pyc
+data/*.db
+screenshots/*.png

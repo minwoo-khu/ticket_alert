@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Monitor{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>{% if monitor %}Edit Monitor{% else %}Create Monitor{% endif %}</h1>
+  <p>Leave watched categories blank to watch every parsed category.</p>
+
+  {% if error %}
+  <div class="notice error">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" action="{% if monitor %}/monitors/{{ monitor.id }}{% else %}/monitors{% endif %}" class="form-grid">
+    <label>
+      <span>Name</span>
+      <input type="text" name="name" value="{{ data.name }}" required>
+    </label>
+
+    <label>
+      <span>Event Title</span>
+      <input type="text" name="event_title" value="{{ data.event_title }}">
+    </label>
+
+    <label class="full">
+      <span>Page URL</span>
+      <input type="url" name="page_url" value="{{ data.page_url }}" required>
+    </label>
+
+    <label>
+      <span>Date Label</span>
+      <input type="text" name="date_label" value="{{ data.date_label }}" placeholder="2026-08-08">
+    </label>
+
+    <label>
+      <span>Round Label</span>
+      <input type="text" name="round_label" value="{{ data.round_label }}" placeholder="1st / 19:00">
+    </label>
+
+    <label class="full">
+      <span>Seat Categories</span>
+      <textarea name="seat_categories" rows="3" placeholder="A, B, Standing">{{ data.seat_categories }}</textarea>
+    </label>
+
+    <label>
+      <span>Poll Interval (sec)</span>
+      <input type="number" name="poll_interval_seconds" value="{{ data.poll_interval_seconds }}" min="15">
+    </label>
+
+    <label>
+      <span>Jitter Min (sec)</span>
+      <input type="number" name="jitter_min_seconds" value="{{ data.jitter_min_seconds }}" min="0">
+    </label>
+
+    <label>
+      <span>Jitter Max (sec)</span>
+      <input type="number" name="jitter_max_seconds" value="{{ data.jitter_max_seconds }}" min="0">
+    </label>
+
+    <label>
+      <span>Cooldown (sec)</span>
+      <input type="number" name="notification_cooldown_seconds" value="{{ data.notification_cooldown_seconds }}" min="0">
+    </label>
+
+    <label>
+      <span>Profile</span>
+      <select name="profile_id">
+        <option value="">Default</option>
+        {% for profile in profiles %}
+        <option value="{{ profile.id }}" {% if data.profile_id|string == profile.id|string %}selected{% endif %}>{{ profile.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      <span>Parser Profile</span>
+      <input type="text" name="parser_profile" value="{{ data.parser_profile }}">
+    </label>
+
+    <label class="full">
+      <span>Selectors JSON</span>
+      <textarea name="selectors_json" rows="12">{{ data.selectors_json }}</textarea>
+    </label>
+
+    <label class="checkbox">
+      <input type="checkbox" name="enabled" {% if data.enabled %}checked{% endif %}>
+      <span>Enable monitor</span>
+    </label>
+
+    <label class="checkbox">
+      <input type="checkbox" name="headless" {% if data.headless %}checked{% endif %}>
+      <span>Run browser headless</span>
+    </label>
+
+    <label class="checkbox">
+      <input type="checkbox" name="notify_on_first_seen_available" {% if data.notify_on_first_seen_available %}checked{% endif %}>
+      <span>Notify on first non-zero observation</span>
+    </label>
+
+    <div class="form-actions full">
+      <button class="button primary" type="submit">Save Monitor</button>
+      <a class="button" href="/">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Profiles{% endblock %}
+{% block content %}
+<section class="grid">
+  <div class="card">
+    <h1>Profiles</h1>
+    <p>Create a persistent Playwright profile, then open a headed browser once and log in manually.</p>
+
+    <form method="post" action="/profiles" class="form-grid">
+      <label>
+        <span>Name</span>
+        <input type="text" name="name" placeholder="interpark_main" required>
+      </label>
+
+      <label>
+        <span>Browser Type</span>
+        <input type="text" name="browser_type" value="chromium">
+      </label>
+
+      <label class="full">
+        <span>Profile Path</span>
+        <input type="text" name="profile_path" placeholder="Optional custom path">
+      </label>
+
+      <div class="form-actions full">
+        <button class="button primary" type="submit">Save Profile</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Saved Profiles</h2>
+    <ul class="list">
+      {% for profile in profiles %}
+      <li>
+        <div>
+          <strong>{{ profile.name }}</strong>
+          <div class="muted">{{ profile.profile_path }}</div>
+        </div>
+        <form method="post" action="/profiles/{{ profile.id }}/open-session" class="inline-form">
+          <input type="hidden" name="start_url" value="https://tickets.interpark.com/goods/26005670">
+          <button class="button" type="submit">Open Login Session</button>
+        </form>
+      </li>
+      {% else %}
+      <li>No profiles yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endblock %}
+
