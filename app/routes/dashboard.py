@@ -51,6 +51,7 @@ def home(request: Request, db: Session = Depends(get_db)):
         )
 
     return templates.TemplateResponse(
+        request,
         "dashboard.html",
         {
             "request": request,
@@ -70,6 +71,7 @@ def history(request: Request, db: Session = Depends(get_db)):
         db.execute(select(Alert).order_by(Alert.sent_at.desc()).limit(100)).scalars()
     )
     return templates.TemplateResponse(
+        request,
         "history.html",
         {
             "request": request,

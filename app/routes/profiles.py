@@ -23,6 +23,7 @@ router = APIRouter(prefix="/profiles", tags=["profiles"])
 def list_profiles(request: Request, db: Session = Depends(get_db)):
     profiles = list(db.execute(select(Profile).order_by(Profile.name.asc())).scalars())
     return templates.TemplateResponse(
+        request,
         "profiles.html",
         {"request": request, "profiles": profiles},
     )
@@ -68,4 +69,3 @@ def open_session(
         browser_type=profile.browser_type,
     )
     return RedirectResponse(url="/profiles", status_code=303)
-

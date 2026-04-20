@@ -3,7 +3,7 @@
 {% block content %}
 <section class="card">
   <h1>{% if monitor %}Edit Monitor{% else %}Create Monitor{% endif %}</h1>
-  <p>Leave watched categories blank to watch every parsed category.</p>
+  <p>Leave watched categories blank to watch every parsed category. Profile selection is optional for public event pages.</p>
 
   {% if error %}
   <div class="notice error">{{ error }}</div>
@@ -63,7 +63,7 @@
     <label>
       <span>Profile</span>
       <select name="profile_id">
-        <option value="">Default</option>
+        <option value="">No profile / public page</option>
         {% for profile in profiles %}
         <option value="{{ profile.id }}" {% if data.profile_id|string == profile.id|string %}selected{% endif %}>{{ profile.name }}</option>
         {% endfor %}

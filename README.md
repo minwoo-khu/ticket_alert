@@ -1,173 +1,223 @@
-# Ticket Availability Alert MVP
+# Ticket Alert Worker
 
-Local-first MVP for monitoring Interpark-style ticket pages and sending Discord webhook alerts when watched seat categories move from `0` to `1+`.
+Cloud-friendly ticket availability watcher for Interpark-style event pages.
 
-Two sample monitors are seeded for:
+This version is optimized for one job:
 
-- `https://tickets.interpark.com/goods/26005670` on `2026-08-08`
-- `https://tickets.interpark.com/goods/26005670` on `2026-08-09`
+- keep checking ticket pages in the background
+- detect `0 -> 1+` seat transitions
+- send Discord webhook alerts
+- keep running without your personal computer turned on
 
-## What This App Does
+It no longer requires the dashboard or SQLite database to do the core monitoring job. The worker stores only lightweight runtime state in a JSON file.
 
-- Opens a local dashboard with monitor/profile/settings pages
-- Stores monitors, runs, seat states, and alerts in SQLite
-- Reuses a persistent Playwright browser profile for one-time manual login
-- Polls conservatively with per-monitor jitter and failure backoff
-- Parses seat summary text into category counts
-- Sends Discord webhook notifications on `0 -> 1+` transitions
+## How It Works
 
-## What This App Does Not Do
+- `worker.json` defines which pages to watch
+- `runtime/state.json` stores the last observed seat counts
+- `python -m app.worker` runs a long-lived background loop
+- Discord alerts are sent when any watched category changes from `0` to a positive count
 
-- Auto-purchase tickets
-- Fill forms automatically
-- Bypass login, CAPTCHA, queues, or anti-bot protections
+## Why The Worker Uses Headed Chromium In Docker
 
-## Stack
+NOL / Interpark pages often hide or change seat data in true headless mode.
 
-- Python 3.11+
-- FastAPI
-- Playwright (Python)
-- SQLite + SQLAlchemy
-- APScheduler
-- Jinja2 server-rendered dashboard
-- Discord webhook notifications
+Because of that, the Docker image runs the worker with `xvfb-run`, which gives Chromium a virtual display in the cloud while still running without a visible desktop.
 
-## Project Layout
+Default sample monitors therefore use:
 
-```text
-app/
-  browser/
-  parsers/
-  routes/
-  services/
-  static/
-  templates/
-tests/
-fixtures/
-profiles/
-screenshots/
-data/
-```
+- `headless: false`
+- ephemeral browser profiles
 
-## Setup
+## Files
 
-### Windows PowerShell
+- [worker.json](/C:/Users/minwo/Desktop/ticket_alert/worker.json): monitor configuration
+- [app/worker.py](/C:/Users/minwo/Desktop/ticket_alert/app/worker.py): long-running worker entrypoint
+- [app/worker_config.py](/C:/Users/minwo/Desktop/ticket_alert/app/worker_config.py): config loader
+- [app/worker_runtime.py](/C:/Users/minwo/Desktop/ticket_alert/app/worker_runtime.py): monitor execution and transition logic
+- [runtime/state.json](</C:/Users/minwo/Desktop/ticket_alert/runtime/state.json>): last observed counts and status after running locally
+- [render.yaml](/C:/Users/minwo/Desktop/ticket_alert/render.yaml): Render background worker blueprint
+
+## Quick Start
+
+### 1. Install dependencies
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-playwright install chromium
-Copy-Item .env.example .env
-python -m app.main migrate-or-init
-python -m app.main runserver
+python -m playwright install chromium
 ```
 
-### macOS / Linux
+### 2. Configure Discord
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-playwright install chromium
-cp .env.example .env
-python -m app.main migrate-or-init
-python -m app.main runserver
+Copy `.env.example` to `.env` and set:
+
+```env
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 ```
 
-Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
+You can also set `DISCORD_USERNAME` and `DISCORD_AVATAR_URL` if you want.
 
-## Discord Webhook Setup
+### 3. Edit monitors
 
-1. Create a Discord channel you can keep private.
-2. Edit the channel settings and create an incoming webhook.
-3. Put the webhook URL in `.env` or save it from the dashboard settings page.
-4. Enable Discord mobile notifications for that channel/server on your phone.
-5. Use the dashboard `Test Notification` button or run:
+Update [worker.json](/C:/Users/minwo/Desktop/ticket_alert/worker.json).
 
-```bash
-python -m app.main test-discord
+Important fields per monitor:
+
+- `page_url`: event page
+- `date_label`: date text to click
+- `round_label`: optional round text
+- `selectors.date_button_text`: optional day button text override
+- `poll_interval_seconds`: how often to re-check
+- `seat_categories`: leave empty to watch every parsed category
+- `headless`: keep `false` for Interpark/NOL unless you verify headless works
+- `persist_profile`: set `true` only when you really need saved cookies/login
+
+### 4. Test one run
+
+```powershell
+python -m app.worker --once
 ```
 
-## Manual Login Profile Setup
+Or a single monitor:
 
-The app never stores plaintext passwords. It expects manual login with a persistent browser profile.
-
-### Dashboard flow
-
-1. Open `/profiles`
-2. Save a profile
-3. Click `Open Login Session`
-4. Log in manually in the headed Chromium window
-5. Close the browser window
-
-### CLI flow
-
-```bash
-python -m app.main init-profile --name interpark_main --url "https://tickets.interpark.com/goods/26005670"
+```powershell
+python -m app.worker --once --monitor interpark-2026-08-08
 ```
 
-## Creating or Editing Monitors
+### 5. Run forever
 
-From the dashboard:
-
-1. Open `New Monitor`
-2. Set the Interpark URL
-3. Set `date_label` to `2026-08-08` or `2026-08-09`
-4. Leave seat categories blank to watch every parsed category, or enter specific names
-5. Pick a profile
-6. Save the monitor
-7. Enable it and use `Run Now` to verify extraction
-
-## CLI Commands
-
-```bash
-python -m app.main migrate-or-init
-python -m app.main seed-samples
-python -m app.main runserver
-python -m app.main run-monitor --id 1
-python -m app.main test-discord
-python -m app.main init-profile --name interpark_main --url "https://tickets.interpark.com/goods/26005670"
+```powershell
+python -m app.worker
 ```
 
-## Tests
+## State And Persistence
 
-Run the parser, transition, and mock-runner tests with:
+The worker keeps the last seat counts in `runtime/state.json`.
 
-```bash
-python -m unittest discover -s tests
-```
+That file matters because it lets the worker know whether a category changed from `0` to `1+`.
 
-## Selector Tips
+If the worker restarts with no saved state:
 
-- Prefer visible-text selectors first
-- Use `seat_summary_selector` when the DOM stabilizes
-- Keep `date_button_text` and `round_button_text` editable per monitor
-- If extraction fails, check run history and the saved screenshot path
+- it can still run
+- but it may miss a transition that happened before restart
 
-Example advanced selectors JSON:
+So for real cloud use, mount persistent storage to `/app/runtime`.
+
+## Render Deployment
+
+Render is a good fit because this app is a long-running background worker, not a serverless function.
+
+Official references:
+
+- [Render Background Workers](https://render.com/docs/background-workers)
+- [Render Docker Deploys](https://render.com/docs/docker)
+- [Render Blueprint YAML Reference](https://render.com/docs/blueprint-spec)
+- [Render Persistent Disks](https://render.com/docs/disks)
+
+### Recommended setup on Render
+
+1. Push this repo to GitHub.
+2. In Render, create a new Blueprint or background worker from the repo.
+3. Use the included [render.yaml](/C:/Users/minwo/Desktop/ticket_alert/render.yaml).
+4. Add secret env var:
+   `DISCORD_WEBHOOK_URL`
+5. The included Blueprint already declares a persistent disk mounted at:
+   `/app/runtime`
+
+That disk keeps:
+
+- `state.json`
+- screenshots
+- optional persistent browser profiles
+
+### Notes
+
+- Render background workers are paid services.
+- If you skip the disk, the worker still runs, but state resets on redeploy/restart.
+
+## Railway / Fly.io
+
+This worker can also run on Railway or Fly.io because it already has a Dockerfile.
+
+But the same rule applies:
+
+- no DB required
+- one long-running worker process
+- persistent storage is still recommended for `runtime/state.json`
+
+## Config Reference
+
+Top-level `worker.json` fields:
 
 ```json
 {
-  "date_picker_container": ".date-panel",
-  "date_button_text": "9",
-  "round_button_text": "1st / 19:00",
-  "seat_summary_selector": ".seat-summary",
-  "seat_summary_text_hint": "ReservedA"
+  "timezone": "Asia/Seoul",
+  "request_timeout_seconds": 45,
+  "idle_sleep_seconds": 5,
+  "state_path": "./runtime/state.json",
+  "screenshot_dir": "./runtime/screenshots",
+  "profile_dir": "./runtime/profiles",
+  "discord": {
+    "webhook_url": "",
+    "username": "Ticket Alert Bot",
+    "avatar_url": "",
+    "enabled": true
+  },
+  "monitors": []
 }
 ```
 
-## Docker
+Per-monitor fields:
 
-```bash
-docker compose up --build
+```json
+{
+  "id": "interpark-2026-08-08",
+  "name": "Interpark 8/8 Watch",
+  "page_url": "https://tickets.interpark.com/goods/26005670",
+  "date_label": "2026-08-08",
+  "round_label": "",
+  "seat_categories": [],
+  "selectors": {
+    "date_button_text": "8"
+  },
+  "poll_interval_seconds": 45,
+  "headless": false,
+  "browser_type": "chromium",
+  "persist_profile": false,
+  "notification_cooldown_seconds": 0,
+  "notify_on_first_seen_available": false,
+  "enabled": true
+}
 ```
 
-The container stores SQLite data, profiles, and screenshots in the local `data/`, `profiles/`, and `screenshots/` directories.
+## Environment Variables
 
-## Troubleshooting
+Supported env vars:
 
-- If notifications do not arrive, confirm the Discord webhook URL and phone notification settings.
-- If extraction fails after the site updates, edit the monitor selectors JSON and test with `Run Now`.
-- If the login expires, reopen the saved browser profile and log in manually again.
-- If Playwright is missing Chromium, run `playwright install chromium`.
+- `DISCORD_WEBHOOK_URL`
+- `DISCORD_USERNAME`
+- `DISCORD_AVATAR_URL`
+- `ENABLE_DISCORD`
+- `TIMEZONE`
+- `WORKER_CONFIG_PATH`
+- `WORKER_STATE_PATH`
+- `WORKER_PROFILE_DIR`
+- `WORKER_SCREENSHOT_DIR`
+- `DEFAULT_BROWSER_TYPE`
+- `REQUEST_TIMEOUT_SECONDS`
+
+## Legacy Dashboard
+
+The old FastAPI dashboard code is still in the repository for now, but the Docker default entrypoint is the background worker:
+
+```powershell
+python -m app.worker
+```
+
+If you still want to open the legacy dashboard locally, you can run:
+
+```powershell
+python -m app.main runserver
+```

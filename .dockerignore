@@ -1,0 +1,13 @@
+.venv
+.vendor
+.tmp
+__pycache__
+*.pyc
+.git
+.gitignore
+data
+profiles
+runtime
+screenshots
+server.stdout.log
+server.stderr.log

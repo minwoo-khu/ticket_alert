@@ -3,5 +3,13 @@
 .tmp/
 __pycache__/
 *.pyc
+.env
 data/*.db
+data/
+profiles/
 screenshots/*.png
+screenshots/
+runtime/
+server.stdout.log
+server.stderr.log
+ticket_alert-main/

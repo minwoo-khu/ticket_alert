@@ -35,12 +35,30 @@ class SeatParserTests(unittest.TestCase):
         text = "스탠딩 0석 / 지정석A 1석 / 지정석B 12석"
         self.assertEqual(parse_counts(text), {"스탠딩": 0, "지정석A": 1, "지정석B": 12})
 
+    def test_concatenated_korean_labels(self) -> None:
+        text = "스탠딩R0석스탠딩S0석지정석R0석지정석S0석지정석A0석지정석B0석"
+        self.assertEqual(
+            parse_counts(text),
+            {
+                "스탠딩R": 0,
+                "스탠딩S": 0,
+                "지정석R": 0,
+                "지정석S": 0,
+                "지정석A": 0,
+                "지정석B": 0,
+            },
+        )
+
     def test_bad_input_returns_empty_counts(self) -> None:
         result = parse_seat_summary("Seat summary unavailable")
+        self.assertEqual(result.counts, {})
+        self.assertEqual(result.error, "no categories found")
+
+    def test_year_in_title_is_not_parsed_as_seat_count(self) -> None:
+        result = parse_seat_summary("OFFICIAL HIGE DANDISM ASIA TOUR 2026")
         self.assertEqual(result.counts, {})
         self.assertEqual(result.error, "no categories found")
 
 
 if __name__ == "__main__":
     unittest.main()
-

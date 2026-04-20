@@ -96,6 +96,7 @@ def _apply_monitor_form(
 @router.get("/new")
 def new_monitor(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
+        request,
         "monitor_form.html",
         {"request": request, **_monitor_form_context(db)},
     )
@@ -107,6 +108,7 @@ def edit_monitor(monitor_id: int, request: Request, db: Session = Depends(get_db
     if monitor is None:
         raise HTTPException(status_code=404, detail="Monitor not found")
     return templates.TemplateResponse(
+        request,
         "monitor_form.html",
         {"request": request, **_monitor_form_context(db, monitor=monitor)},
     )
@@ -156,6 +158,7 @@ def create_monitor(
         )
     except json.JSONDecodeError as exc:
         return templates.TemplateResponse(
+            request,
             "monitor_form.html",
             {
                 "request": request,
@@ -218,6 +221,7 @@ def update_monitor(
         )
     except json.JSONDecodeError as exc:
         return templates.TemplateResponse(
+            request,
             "monitor_form.html",
             {
                 "request": request,
@@ -248,4 +252,3 @@ def toggle_monitor(monitor_id: int, request: Request, db: Session = Depends(get_
 def run_monitor_now(monitor_id: int, request: Request):
     request.app.state.scheduler.run_monitor_now(monitor_id)
     return RedirectResponse(url="/", status_code=303)
-

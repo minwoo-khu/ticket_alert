@@ -19,6 +19,7 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 def settings_page(request: Request, db: Session = Depends(get_db)):
     config = get_notification_config(db, get_settings())
     return templates.TemplateResponse(
+        request,
         "settings.html",
         {
             "request": request,
@@ -50,4 +51,3 @@ def test_notification(db: Session = Depends(get_db)):
     result = service.send_test_notification(db)
     suffix = "ok" if result.success else "failed"
     return RedirectResponse(url=f"/settings?result={suffix}", status_code=303)
-

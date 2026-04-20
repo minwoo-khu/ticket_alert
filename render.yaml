@@ -1,0 +1,13 @@
+services:
+  - name: ticket-alert-worker
+    type: worker
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    disk:
+      name: runtime
+      mountPath: /app/runtime
+      sizeGB: 5
+    envVars:
+      - key: DISCORD_WEBHOOK_URL
+        sync: false

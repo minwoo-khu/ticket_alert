@@ -4,7 +4,7 @@
 <section class="grid">
   <div class="card">
     <h1>Profiles</h1>
-    <p>Create a persistent Playwright profile, then open a headed browser once and log in manually.</p>
+    <p>Profiles are optional. Only create one when the target page needs a logged-in session or extra cookies.</p>
 
     <form method="post" action="/profiles" class="form-grid">
       <label>
@@ -16,6 +16,8 @@
         <span>Browser Type</span>
         <input type="text" name="browser_type" value="chromium">
       </label>
+
+      <p class="muted full">Use <code>chromium</code> by default. If a login popup opens blank or behaves oddly, try <code>chrome</code>.</p>
 
       <label class="full">
         <span>Profile Path</span>
@@ -30,6 +32,7 @@
 
   <div class="card">
     <h2>Saved Profiles</h2>
+    <p class="muted">Open Login Session is only needed for sites that hide seat data behind a user session.</p>
     <ul class="list">
       {% for profile in profiles %}
       <li>
@@ -49,4 +52,3 @@
   </div>
 </section>
 {% endblock %}
-

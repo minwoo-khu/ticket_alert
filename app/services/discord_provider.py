@@ -36,7 +36,11 @@ class DiscordWebhookProvider:
         req = request.Request(
             self.webhook_url,
             data=body,
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": "TicketAlertMVP/1.0 (+https://localhost)",
+            },
             method="POST",
         )
 
@@ -61,4 +65,3 @@ class DiscordWebhookProvider:
                 status_code=None,
                 response_text=str(exc),
             )
-

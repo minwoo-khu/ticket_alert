@@ -69,6 +69,42 @@ def _extract_from_body_text(body_text: str, hint: str | None = None) -> str:
     return compact_text
 
 
+def dismiss_known_overlays(page) -> None:
+    notice_popup = page.locator("#popup-prdGuide.is-visible, .popup.popPrdGuide.is-visible").first
+    if notice_popup.count() == 0:
+        return
+
+    try:
+        page.evaluate(
+            """
+            () => {
+              const checkbox = document.querySelector('#popup-prdGuide .popupCheckLabel');
+              if (checkbox instanceof HTMLElement) {
+                checkbox.click();
+              }
+            }
+            """
+        )
+        page.wait_for_timeout(150)
+    except Exception:
+        pass
+
+    try:
+        page.evaluate(
+            """
+            () => {
+              const closeButton = document.querySelector('#popup-prdGuide .popupCloseBtn');
+              if (closeButton instanceof HTMLElement) {
+                closeButton.click();
+              }
+            }
+            """
+        )
+        page.wait_for_timeout(250)
+    except Exception:
+        pass
+
+
 def extract_seat_summary_text(page, selectors: dict, watched_categories: list[str]) -> str:
     seat_summary_selector = selectors.get("seat_summary_selector")
     if seat_summary_selector:
@@ -102,10 +138,11 @@ def extract_seat_summary_text(page, selectors: dict, watched_categories: list[st
 def extract_monitor_page(
     *,
     monitor,
-    profile_path: str | Path,
+    profile_path: str | Path | None,
     browser_type: str,
     screenshot_dir: str | Path,
     request_timeout_seconds: int,
+    ephemeral_profile: bool = False,
 ) -> ExtractionResult:
     selectors = monitor.selectors
     console_errors: list[str] = []
@@ -114,6 +151,7 @@ def extract_monitor_page(
         profile_path=profile_path,
         browser_type=browser_type,
         headless=monitor.headless,
+        ephemeral_profile=ephemeral_profile,
     ) as context:
         page = context.pages[0] if context.pages else context.new_page()
 
@@ -135,10 +173,12 @@ def extract_monitor_page(
                 pass
 
             page.wait_for_timeout(1200)
+            dismiss_known_overlays(page)
             select_date_if_needed(page, monitor.date_label, selectors)
             page.wait_for_timeout(500)
             select_round_if_needed(page, monitor.round_label, selectors)
             page.wait_for_timeout(800)
+            dismiss_known_overlays(page)
 
             raw_text = extract_seat_summary_text(
                 page,

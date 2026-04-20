@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl wget gnupg \
+    && apt-get install -y --no-install-recommends curl wget gnupg xvfb xauth \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -15,9 +15,6 @@ RUN python -m playwright install --with-deps chromium
 
 COPY . .
 
-RUN mkdir -p /app/data /app/profiles /app/screenshots
+RUN mkdir -p /app/runtime/profiles /app/runtime/screenshots /app/runtime
 
-EXPOSE 8000
-
-CMD ["python", "-m", "app.main", "runserver"]
-
+CMD ["xvfb-run", "-a", "python", "-m", "app.worker"]
