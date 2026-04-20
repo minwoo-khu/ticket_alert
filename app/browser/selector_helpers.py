@@ -29,6 +29,48 @@ def _click_by_text(page, text: str) -> bool:
     return False
 
 
+def _click_within_container(page, container_selector: str, text: str) -> bool:
+    if not container_selector or not text:
+        return False
+
+    try:
+        container = page.locator(container_selector).first
+        if container.count() == 0:
+            return False
+        for exact in (True, False):
+            if _click_locator(container.get_by_text(text, exact=exact)):
+                return True
+        clicked = page.evaluate(
+            """
+            ([selector, target]) => {
+              const container = document.querySelector(selector);
+              if (!container) return false;
+              const candidates = [...container.querySelectorAll('*')]
+                .filter((element) => {
+                  const label = (element.innerText || '').trim();
+                  const rect = element.getBoundingClientRect();
+                  return label === target && rect.width > 0 && rect.height > 0;
+                })
+                .sort((left, right) => {
+                  const leftArea = left.getBoundingClientRect().width * left.getBoundingClientRect().height;
+                  const rightArea = right.getBoundingClientRect().width * right.getBoundingClientRect().height;
+                  return leftArea - rightArea;
+                });
+              const candidate = candidates[0];
+              if (!(candidate instanceof HTMLElement)) return false;
+              candidate.click();
+              return true;
+            }
+            """,
+            [container_selector, text],
+        )
+        return bool(clicked)
+    except Exception:
+        return False
+
+    return False
+
+
 def select_date_if_needed(page, date_label: str, selectors: dict) -> str | None:
     if not date_label:
         return None
@@ -45,14 +87,13 @@ def select_date_if_needed(page, date_label: str, selectors: dict) -> str | None:
         candidates.append(digits[-1].lstrip("0") or digits[-1])
 
     container_selector = selectors.get("date_picker_container")
-    if container_selector:
-        try:
-            container = page.locator(container_selector)
-            for candidate in candidates:
-                if _click_locator(container.get_by_text(candidate, exact=False)):
-                    return candidate
-        except Exception:
-            pass
+    container_selectors = [container_selector, ".datepicker-panel"]
+    for scoped_selector in container_selectors:
+        if not scoped_selector:
+            continue
+        for candidate in candidates:
+            if _click_within_container(page, scoped_selector, candidate):
+                return candidate
 
     for candidate in candidates:
         if _click_by_text(page, candidate):
@@ -67,9 +108,20 @@ def select_round_if_needed(page, round_label: str, selectors: dict) -> str | Non
 
     candidates = [str(selectors.get("round_button_text", "")).strip(), round_label]
 
+    container_selectors = [
+        selectors.get("round_picker_container"),
+        ".timeTableList",
+        ".sideTimeTable",
+    ]
+    for scoped_selector in container_selectors:
+        if not scoped_selector:
+            continue
+        for candidate in candidates:
+            if candidate and _click_within_container(page, scoped_selector, candidate):
+                return candidate
+
     for candidate in candidates:
         if candidate and _click_by_text(page, candidate):
             return candidate
 
     return None
-

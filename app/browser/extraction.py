@@ -69,6 +69,19 @@ def _extract_from_body_text(body_text: str, hint: str | None = None) -> str:
     return compact_text
 
 
+def _trim_to_seat_summary(text: str) -> str:
+    candidate = (text or "").strip()
+    if not candidate:
+        return ""
+
+    if "잔여석" in candidate:
+        candidate = candidate.split("잔여석", 1)[1].strip()
+    if "예매하기" in candidate:
+        candidate = candidate.split("예매하기", 1)[0].strip()
+
+    return candidate.strip()
+
+
 def dismiss_known_overlays(page) -> None:
     notice_popup = page.locator("#popup-prdGuide.is-visible, .popup.popPrdGuide.is-visible").first
     if notice_popup.count() == 0:
@@ -106,10 +119,17 @@ def dismiss_known_overlays(page) -> None:
 
 
 def extract_seat_summary_text(page, selectors: dict, watched_categories: list[str]) -> str:
-    seat_summary_selector = selectors.get("seat_summary_selector")
-    if seat_summary_selector:
+    selector_candidates = [
+        selectors.get("seat_summary_selector"),
+        ".sideContainer.containerMiddle.sideToggleWrap .sideContent",
+        ".sideContent",
+    ]
+    for seat_summary_selector in selector_candidates:
+        if not seat_summary_selector:
+            continue
         try:
             text = page.locator(seat_summary_selector).first.text_content(timeout=4000) or ""
+            text = _trim_to_seat_summary(text)
             if text.strip():
                 return text.strip()
         except Exception:
@@ -131,6 +151,12 @@ def extract_seat_summary_text(page, selectors: dict, watched_categories: list[st
         body_text = page.locator("body").inner_text(timeout=4000)
     except PlaywrightTimeoutError:
         body_text = ""
+
+    booking_match = re.search(r"잔여석\s*(?P<summary>.+?)\s*예매하기", body_text, re.DOTALL)
+    if booking_match:
+        summary = _trim_to_seat_summary(booking_match.group("summary"))
+        if summary:
+            return summary
 
     return _extract_from_body_text(body_text, hint=hint)
 
@@ -206,13 +232,15 @@ def extract_monitor_page(
 
             page.wait_for_timeout(1200)
             dismiss_known_overlays(page)
-            select_date_if_needed(page, monitor.date_label, selectors)
+            if monitor.date_label:
+                select_date_if_needed(page, monitor.date_label, selectors)
             try:
                 page.wait_for_load_state("networkidle", timeout=5000)
             except PlaywrightTimeoutError:
                 pass
             page.wait_for_timeout(800)
-            select_round_if_needed(page, monitor.round_label, selectors)
+            if monitor.round_label:
+                select_round_if_needed(page, monitor.round_label, selectors)
             try:
                 page.wait_for_load_state("networkidle", timeout=5000)
             except PlaywrightTimeoutError:

@@ -61,15 +61,34 @@ def persistent_context(
         with sync_playwright() as playwright:
             launcher, launch_options = _resolve_launcher(playwright, browser_type)
             launch_options = _build_launch_options(browser_type, launch_options)
-            context = launcher.launch_persistent_context(
-                user_data_dir=str(profile_dir),
-                headless=headless,
-                **launch_options,
-            )
-            try:
-                yield context
-            finally:
-                context.close()
+            if ephemeral_profile or profile_path is None:
+                browser = launcher.launch(
+                    headless=headless,
+                    **launch_options,
+                )
+                context = browser.new_context(
+                    viewport={"width": 1440, "height": 1400},
+                    locale="ko-KR",
+                    timezone_id="Asia/Seoul",
+                )
+                try:
+                    yield context
+                finally:
+                    context.close()
+                    browser.close()
+            else:
+                context = launcher.launch_persistent_context(
+                    user_data_dir=str(profile_dir),
+                    headless=headless,
+                    viewport={"width": 1440, "height": 1400},
+                    locale="ko-KR",
+                    timezone_id="Asia/Seoul",
+                    **launch_options,
+                )
+                try:
+                    yield context
+                finally:
+                    context.close()
 
 
 def open_login_session(profile_path: str | Path, start_url: str, browser_type: str = "chromium") -> None:
