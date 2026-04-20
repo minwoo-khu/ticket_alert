@@ -59,6 +59,11 @@ class SeatParserTests(unittest.TestCase):
         self.assertEqual(result.counts, {})
         self.assertEqual(result.error, "no categories found")
 
+    def test_notice_ticket_limit_does_not_parse_as_seat_count(self) -> None:
+        result = parse_seat_summary("※ 본 공연은 아이디당 1인 2매까지 구매 가능")
+        self.assertEqual(result.counts, {})
+        self.assertEqual(result.error, "no categories found")
+
 
 if __name__ == "__main__":
     unittest.main()
