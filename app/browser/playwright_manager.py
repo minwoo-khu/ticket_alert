@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import os
 from pathlib import Path
 import threading
 import time
@@ -24,6 +25,22 @@ def _resolve_launcher(playwright, browser_type: str):
     )
 
 
+def _build_launch_options(browser_type: str, launch_options: dict) -> dict:
+    normalized = (browser_type or "chromium").strip().lower()
+    resolved = dict(launch_options)
+    args = list(resolved.get("args", []))
+
+    if normalized in {"chromium", "chrome", "edge", "msedge"}:
+        args.append("--disable-dev-shm-usage")
+        if hasattr(os, "geteuid") and os.geteuid() == 0:
+            # Dockerized cloud workers often run as root by default.
+            args.extend(["--no-sandbox", "--disable-setuid-sandbox"])
+
+    if args:
+        resolved["args"] = args
+    return resolved
+
+
 @contextmanager
 def persistent_context(
     profile_path: str | Path | None,
@@ -43,6 +60,7 @@ def persistent_context(
     with _user_data_dir() as profile_dir:
         with sync_playwright() as playwright:
             launcher, launch_options = _resolve_launcher(playwright, browser_type)
+            launch_options = _build_launch_options(browser_type, launch_options)
             context = launcher.launch_persistent_context(
                 user_data_dir=str(profile_dir),
                 headless=headless,
@@ -59,6 +77,7 @@ def open_login_session(profile_path: str | Path, start_url: str, browser_type: s
 
     with sync_playwright() as playwright:
         launcher, launch_options = _resolve_launcher(playwright, browser_type)
+        launch_options = _build_launch_options(browser_type, launch_options)
         context = launcher.launch_persistent_context(
             user_data_dir=str(profile_dir),
             headless=False,

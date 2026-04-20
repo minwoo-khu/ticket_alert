@@ -36,6 +36,9 @@ Default sample monitors therefore use:
 - [app/worker_config.py](/C:/Users/minwo/Desktop/ticket_alert/app/worker_config.py): config loader
 - [app/worker_runtime.py](/C:/Users/minwo/Desktop/ticket_alert/app/worker_runtime.py): monitor execution and transition logic
 - [runtime/state.json](</C:/Users/minwo/Desktop/ticket_alert/runtime/state.json>): last observed counts and status after running locally
+- [deploy/oracle-cloud/README.md](/C:/Users/minwo/Desktop/ticket_alert/deploy/oracle-cloud/README.md): Oracle Cloud VM deployment guide
+- [deploy/oracle-cloud/bootstrap-ubuntu.sh](/C:/Users/minwo/Desktop/ticket_alert/deploy/oracle-cloud/bootstrap-ubuntu.sh): one-time VM bootstrap
+- [deploy/oracle-cloud/update-and-run.sh](/C:/Users/minwo/Desktop/ticket_alert/deploy/oracle-cloud/update-and-run.sh): pull latest code and restart the worker
 - [render.yaml](/C:/Users/minwo/Desktop/ticket_alert/render.yaml): Render background worker blueprint
 
 ## Quick Start
@@ -104,6 +107,31 @@ If the worker restarts with no saved state:
 - but it may miss a transition that happened before restart
 
 So for real cloud use, mount persistent storage to `/app/runtime`.
+
+## Oracle Cloud Deployment
+
+If you want the worker to keep running for free while your own PC is off, Oracle Cloud Always Free is the best fit for this repo.
+
+Official references:
+
+- [Oracle Cloud Free Tier](https://www.oracle.com/cloud/free/)
+- [Always Free compute resources](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm)
+
+Recommended path:
+
+1. Create an Ubuntu VM on Oracle Cloud.
+2. Prefer `VM.Standard.A1.Flex` over the tiny `E2.1.Micro` shape.
+3. SSH into the VM.
+4. Follow [deploy/oracle-cloud/README.md](/C:/Users/minwo/Desktop/ticket_alert/deploy/oracle-cloud/README.md).
+
+Recommended sizing here is an inference from this app's runtime:
+
+- Chromium + Playwright + `xvfb` is memory-hungry, so the 1 GB micro shape is usually too tight.
+
+Important:
+
+- Oracle docs say idle Always Free instances may be reclaimed.
+- This worker is intentionally light, so Always Free is convenient but not a hard reliability guarantee.
 
 ## Render Deployment
 
