@@ -71,6 +71,29 @@ def _click_within_container(page, container_selector: str, text: str) -> bool:
     return False
 
 
+def _is_compact_numeric_candidate(text: str) -> bool:
+    stripped = (text or "").strip()
+    return stripped.isdigit() and 1 <= len(stripped) <= 2
+
+
+def _read_selected_date(page, container_selector: str) -> str | None:
+    selectors = [
+        f"{container_selector} li.picked",
+        f"{container_selector} .picked",
+    ]
+    for selector in selectors:
+        try:
+            locator = page.locator(selector).first
+            if locator.count() == 0:
+                continue
+            value = (locator.text_content(timeout=1000) or "").strip()
+            if value:
+                return value
+        except Exception:
+            continue
+    return None
+
+
 def select_date_if_needed(page, date_label: str, selectors: dict) -> str | None:
     if not date_label:
         return None
@@ -91,11 +114,18 @@ def select_date_if_needed(page, date_label: str, selectors: dict) -> str | None:
     for scoped_selector in container_selectors:
         if not scoped_selector:
             continue
+        selected_value = _read_selected_date(page, scoped_selector)
+        if selected_value:
+            for candidate in candidates:
+                if selected_value == str(candidate).strip():
+                    return candidate
         for candidate in candidates:
             if _click_within_container(page, scoped_selector, candidate):
                 return candidate
 
     for candidate in candidates:
+        if _is_compact_numeric_candidate(candidate):
+            continue
         if _click_by_text(page, candidate):
             return candidate
 
