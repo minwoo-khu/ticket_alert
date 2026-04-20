@@ -135,6 +135,38 @@ def extract_seat_summary_text(page, selectors: dict, watched_categories: list[st
     return _extract_from_body_text(body_text, hint=hint)
 
 
+def wait_for_seat_summary_text(
+    page,
+    *,
+    selectors: dict,
+    watched_categories: list[str],
+    timeout_ms: int = 12000,
+    poll_interval_ms: int = 500,
+) -> str:
+    deadline = timeout_ms
+    waited = 0
+    last_text = ""
+
+    while waited <= deadline:
+        candidate = extract_seat_summary_text(
+            page,
+            selectors=selectors,
+            watched_categories=watched_categories,
+        )
+        if candidate.strip():
+            last_text = candidate.strip()
+            if parse_seat_summary(last_text).counts:
+                return last_text
+
+        if waited >= deadline:
+            break
+
+        page.wait_for_timeout(poll_interval_ms)
+        waited += poll_interval_ms
+
+    return last_text
+
+
 def extract_monitor_page(
     *,
     monitor,
@@ -175,12 +207,20 @@ def extract_monitor_page(
             page.wait_for_timeout(1200)
             dismiss_known_overlays(page)
             select_date_if_needed(page, monitor.date_label, selectors)
-            page.wait_for_timeout(500)
-            select_round_if_needed(page, monitor.round_label, selectors)
+            try:
+                page.wait_for_load_state("networkidle", timeout=5000)
+            except PlaywrightTimeoutError:
+                pass
             page.wait_for_timeout(800)
+            select_round_if_needed(page, monitor.round_label, selectors)
+            try:
+                page.wait_for_load_state("networkidle", timeout=5000)
+            except PlaywrightTimeoutError:
+                pass
+            page.wait_for_timeout(1200)
             dismiss_known_overlays(page)
 
-            raw_text = extract_seat_summary_text(
+            raw_text = wait_for_seat_summary_text(
                 page,
                 selectors=selectors,
                 watched_categories=monitor.seat_category_list,

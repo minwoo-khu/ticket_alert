@@ -196,6 +196,11 @@ def run_monitor_once(
         )
         parse_result = parse_seat_summary(extraction.raw_summary_text)
         if not parse_result.counts:
+            logger.warning(
+                "Monitor %s parse failed. Raw text snippet: %s",
+                monitor.id,
+                extraction.raw_summary_text[:200],
+            )
             raise ValueError(parse_result.error or "No seat counts were parsed.")
 
         watched_counts = filter_counts(parse_result.counts, monitor.seat_category_list)
