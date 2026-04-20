@@ -82,6 +82,43 @@ def _trim_to_seat_summary(text: str) -> str:
     return candidate.strip()
 
 
+def _booking_panel_ready(page) -> bool:
+    selector_candidates = [
+        ".sideContainer.containerMiddle.sideToggleWrap .sideContent",
+        ".sideContent",
+        ".productSide",
+    ]
+    for selector in selector_candidates:
+        try:
+            locator = page.locator(selector).first
+            if locator.count() == 0:
+                continue
+            text = (locator.text_content(timeout=1000) or "").strip()
+            if "잔여석" in text or ("상품 예매하기" in text and "관람일" in text):
+                return True
+        except Exception:
+            continue
+
+    try:
+        body_text = page.locator("body").inner_text(timeout=1000)
+    except Exception:
+        body_text = ""
+
+    return "상품 예매하기" in body_text and "관람일" in body_text and "잔여석" in body_text
+
+
+def wait_for_booking_panel(page, *, timeout_ms: int = 30000, poll_interval_ms: int = 1000) -> bool:
+    waited = 0
+    while waited <= timeout_ms:
+        if _booking_panel_ready(page):
+            return True
+        if waited >= timeout_ms:
+            break
+        page.wait_for_timeout(poll_interval_ms)
+        waited += poll_interval_ms
+    return False
+
+
 def dismiss_known_overlays(page) -> None:
     notice_popup = page.locator("#popup-prdGuide.is-visible, .popup.popPrdGuide.is-visible").first
     if notice_popup.count() == 0:
@@ -220,18 +257,29 @@ def extract_monitor_page(
         page.on("console", on_console)
 
         try:
-            page.goto(
-                monitor.page_url,
-                wait_until="domcontentloaded",
-                timeout=request_timeout_seconds * 1000,
-            )
-            try:
-                page.wait_for_load_state("networkidle", timeout=10000)
-            except PlaywrightTimeoutError:
-                pass
+            def load_target_page() -> None:
+                page.goto(
+                    monitor.page_url,
+                    wait_until="domcontentloaded",
+                    timeout=request_timeout_seconds * 1000,
+                )
+                try:
+                    page.wait_for_load_state("networkidle", timeout=10000)
+                except PlaywrightTimeoutError:
+                    pass
+                page.wait_for_timeout(1200)
+                dismiss_known_overlays(page)
 
-            page.wait_for_timeout(1200)
-            dismiss_known_overlays(page)
+            load_target_page()
+            if not wait_for_booking_panel(page, timeout_ms=30000):
+                # Slow cloud runners sometimes land on a partially rendered marketing shell first.
+                load_target_page()
+                if not wait_for_booking_panel(page, timeout_ms=30000):
+                    screenshot_path = _take_screenshot(page, screenshot_dir, monitor.id)
+                    raise SeatExtractionError(
+                        f"Booking panel did not become ready. URL={page.url} TITLE={page.title()}",
+                        screenshot_path,
+                    )
             if monitor.date_label:
                 select_date_if_needed(page, monitor.date_label, selectors)
             try:
@@ -247,6 +295,12 @@ def extract_monitor_page(
                 pass
             page.wait_for_timeout(1200)
             dismiss_known_overlays(page)
+            if not wait_for_booking_panel(page, timeout_ms=15000):
+                screenshot_path = _take_screenshot(page, screenshot_dir, monitor.id)
+                raise SeatExtractionError(
+                    f"Booking panel disappeared before extraction. URL={page.url} TITLE={page.title()}",
+                    screenshot_path,
+                )
 
             raw_text = wait_for_seat_summary_text(
                 page,

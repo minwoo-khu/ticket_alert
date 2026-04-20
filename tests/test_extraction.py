@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from app.browser.extraction import extract_seat_summary_text, wait_for_seat_summary_text
+from app.browser.extraction import extract_seat_summary_text, wait_for_booking_panel, wait_for_seat_summary_text
 
 
 class _FakePage:
@@ -25,11 +25,15 @@ class _FakeLocator:
     def text_content(self, timeout: int | None = None) -> str:
         return self._text
 
+    def count(self) -> int:
+        return 1 if self._text else 0
+
 
 class _FakePageForExtraction:
     def __init__(self, body_text: str, selectors: dict[str, str] | None = None) -> None:
         self.body_text = body_text
         self.selectors = selectors or {}
+        self.wait_calls: list[int] = []
 
     def locator(self, selector: str):
         if selector == "body":
@@ -43,8 +47,26 @@ class _FakePageForExtraction:
             return _Body(self.body_text)
         return _FakeLocator(self.selectors.get(selector, ""))
 
+    def wait_for_timeout(self, timeout_ms: int) -> None:
+        self.wait_calls.append(timeout_ms)
+
 
 class ExtractionTests(unittest.TestCase):
+    def test_wait_for_booking_panel_detects_ready_state_from_body(self) -> None:
+        page = _FakePageForExtraction(body_text="상품 예매하기 관람일 잔여석 스탠딩R0석")
+
+        ready = wait_for_booking_panel(page, timeout_ms=0)
+
+        self.assertTrue(ready)
+
+    def test_wait_for_booking_panel_retries_until_timeout(self) -> None:
+        page = _FakePageForExtraction(body_text="홈 투어 티켓")
+
+        ready = wait_for_booking_panel(page, timeout_ms=1000, poll_interval_ms=500)
+
+        self.assertFalse(ready)
+        self.assertEqual(page.wait_calls, [500, 500])
+
     def test_extract_seat_summary_text_prefers_side_content_selector(self) -> None:
         page = _FakePageForExtraction(
             body_text="홈 페이지 텍스트",
